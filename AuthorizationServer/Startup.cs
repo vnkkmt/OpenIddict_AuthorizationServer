@@ -37,6 +37,17 @@ namespace AuthorizationServer
             });
 
             services.AddOpenIddict()
+                .AddServer(options =>
+                {
+                    options.AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange();
+
+                    options .SetAuthorizationEndpointUris("/connect/authorize")
+                            .SetTokenEndpointUris("/connect/token");
+                    options
+                            .UseAspNetCore()
+                            .EnableTokenEndpointPassthrough()
+                            .EnableAuthorizationEndpointPassthrough();
+                })
 
         // Register the OpenIddict core components.
         .AddCore(options =>
