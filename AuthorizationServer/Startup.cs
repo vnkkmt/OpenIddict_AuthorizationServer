@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,43 +43,60 @@ namespace AuthorizationServer
                     options.AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange();
 
                     options .SetAuthorizationEndpointUris("/connect/authorize")
-                            .SetTokenEndpointUris("/connect/token");
+                            .SetTokenEndpointUris("/connect/token")
+                            .SetUserinfoEndpointUris("/connect/userinfo");
                     options
                             .UseAspNetCore()
                             .EnableTokenEndpointPassthrough()
-                            .EnableAuthorizationEndpointPassthrough();
+                            .EnableAuthorizationEndpointPassthrough()
+                            .EnableUserinfoEndpointPassthrough();
                 })
 
-        // Register the OpenIddict core components.
-        .AddCore(options =>
-        {
-            // Configure OpenIddict to use the EF Core stores/models.
-            options.UseEntityFrameworkCore()
-                .UseDbContext<DbContext>();
-        })
-        // Register the OpenIddict server components.
-        .AddServer(options =>
-        {
-            options
-                .AllowClientCredentialsFlow();
+                 .AddValidation(options =>
+                 {
+                     // Import the configuration from the local OpenIddict server instance.
+                     options.UseLocalServer();
 
-            options
-                .SetTokenEndpointUris("/connect/token");
+                     // Register the ASP.NET Core host.
+                     options.UseAspNetCore();
+                 })
 
-            // Encryption and signing of tokens
-            options
-                .AddEphemeralEncryptionKey()
-                .AddEphemeralSigningKey()
-                .DisableAccessTokenEncryption(); // remove this line so that OpenIddict encrypts the access token
+                // Register the OpenIddict core components.
+                .AddCore(options =>
+                {
+                    // Configure OpenIddict to use the EF Core stores/models.
+                    options.UseEntityFrameworkCore()
+                        .UseDbContext<DbContext>();
+                })
+                // Register the OpenIddict server components.
+                .AddServer(options =>
+                {
+                    options.AddSigningKey(new SymmetricSecurityKey(
+                    Convert.FromBase64String("DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY="))); //signin key required for authentication
 
-            // Register scopes (permissions)
-            options.RegisterScopes("api");
+                    //options.AddEncryptionKey(new SymmetricSecurityKey(
+                    //Convert.FromBase64String("DRjd/GnduI3Efzen9V9BvbNUfc/VKgXltV7Kbk9sMkY=")));
 
-            // Register the ASP.NET Core host and configure the ASP.NET Core-specific options.
-            options
-                .UseAspNetCore()
-                .EnableTokenEndpointPassthrough();
-        });
+                    options
+                        .AllowClientCredentialsFlow();
+
+                    options
+                        .SetTokenEndpointUris("/connect/token");
+
+                    // Encryption and signing of tokens
+                    options
+                        .AddEphemeralEncryptionKey()
+                        .AddEphemeralSigningKey()
+                        .DisableAccessTokenEncryption(); // remove this line so that OpenIddict encrypts the access token
+
+                    // Register scopes (permissions)
+                    options.RegisterScopes("api");
+
+                    // Register the ASP.NET Core host and configure the ASP.NET Core-specific options.
+                    options
+                        .UseAspNetCore()
+                        .EnableTokenEndpointPassthrough();
+                });
 
             services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
@@ -106,8 +124,8 @@ namespace AuthorizationServer
             app.UseStaticFiles();
 
             app.UseRouting();
-            app.UseAuthentication();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>

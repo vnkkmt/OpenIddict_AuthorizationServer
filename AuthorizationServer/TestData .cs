@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Threading;
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace AuthorizationServer
 {
@@ -45,6 +46,10 @@ namespace AuthorizationServer
                         OpenIddictConstants.Permissions.Prefixes.Scope + "api",
                         OpenIddictConstants.Permissions.ResponseTypes.Code
                     }
+                        //,Requirements =
+                        //{
+                        //    Requirements.Features.ProofKeyForCodeExchange
+                        //}
                     }, cancellationToken);
                 }
             }
